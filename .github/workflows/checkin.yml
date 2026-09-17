@@ -62,7 +62,18 @@ jobs:
 
     - name: 安装 CloakBrowser
       run: |
+        set +e
         uv run python -m cloakbrowser install
+        echo "::notice::install 退出码: $?（139 段错误已知偶发，二进制往往仍可用）"
+        set -e
+        CHROME=$(find ~/.cloakbrowser -maxdepth 2 -name chrome -type f 2>/dev/null | head -1)
+        echo "二进制路径: ${CHROME:-未找到}"
+        if [ -n "$CHROME" ]; then
+          set +e
+          "$CHROME" --version
+          echo "::notice::chrome --version 退出码: $?"
+          set -e
+        fi
         echo "✅ CloakBrowser 安装完成"
 
     - name: 恢复余额历史缓存
