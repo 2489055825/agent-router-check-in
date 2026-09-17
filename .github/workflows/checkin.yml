@@ -80,7 +80,21 @@ jobs:
         PROXY_TEST_URL: https://www.google.com/generate_204
         MIHOMO_VERSION: v1.19.27
         PROXY_REQUIRED: false
+        # 只使用名称含「盐湖」的节点。留空则用订阅里的全部节点。
+        PROXY_NODE_FILTER: "盐湖"
       run: bash scripts/setup_mihomo_proxy.sh
+
+    - name: 诊断出口 IP
+      run: |
+        echo "=== 直连出口 ==="
+        curl -s -m 15 --noproxy '*' https://ipinfo.io/json || echo "(查询失败)"
+        echo
+        echo "=== 代理出口 ==="
+        if [ -n "${CHECKIN_PROXY_URL}" ]; then
+          curl -s -m 20 -x "${CHECKIN_PROXY_URL}" https://ipinfo.io/json || echo "(查询失败)"
+        else
+          echo "(CHECKIN_PROXY_URL 未设置，代理没起来)"
+        fi
 
     - name: 执行签到
       env:
