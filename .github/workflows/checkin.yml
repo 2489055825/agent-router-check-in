@@ -92,7 +92,7 @@ jobs:
         MIHOMO_VERSION: v1.19.27
         PROXY_REQUIRED: false
         # 只使用名称含「盐湖」的节点。留空则用订阅里的全部节点。
-        PROXY_NODE_FILTER: "盐湖"
+        PROXY_NODE_FILTER: ""
       run: bash scripts/setup_mihomo_proxy.sh
 
     - name: 诊断出口 IP
@@ -106,6 +106,13 @@ jobs:
         else
           echo "(CHECKIN_PROXY_URL 未设置，代理没起来)"
         fi
+        echo
+        echo "=== CHECKIN 代理组状态 ==="
+        curl -s -m 10 http://127.0.0.1:9090/proxies -o /tmp/p.json || echo "(控制接口无响应)"
+        python3 -c "import json;d=json.load(open('/tmp/p.json'))['proxies'];g=d.get('CHECKIN',{});print('now=',repr(g.get('now')));print('节点总数=',len(g.get('all') or []));print('节点=',(g.get('all') or [])[:12])" 2>/dev/null || echo "(解析失败)"
+        echo
+        echo "=== mihomo 日志尾部 ==="
+        tail -25 "${RUNNER_TEMP}/checkin-proxy/mihomo.log" 2>/dev/null || echo "(无日志)"
 
     - name: 执行签到
       env:

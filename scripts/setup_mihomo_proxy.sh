@@ -46,10 +46,11 @@ fi
 
 cat > config.yaml <<EOF
 mixed-port: ${PROXY_PORT}
+external-controller: 127.0.0.1:9090
 allow-lan: false
 ipv6: false
 mode: rule
-log-level: warning
+log-level: info
 unified-delay: true
 
 proxy-providers:
