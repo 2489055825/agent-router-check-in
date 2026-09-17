@@ -84,18 +84,35 @@ nohup "${MIHOMO_BIN}" -d "${PROXY_DIR}" -f config.yaml > mihomo.log 2>&1 &
 echo $! > mihomo.pid
 
 PROXY_URL="http://127.0.0.1:${PROXY_PORT}"
-READY=false
-for attempt in $(seq 1 45); do
-	if curl -fsS -x "${PROXY_URL}" --max-time 20 "${PROXY_TEST_URL}" -o /dev/null 2>/dev/null; then
-		READY=true
+CONTROL_URL="http://127.0.0.1:9090"
+SELECTED=''
+
+# 等 url-test 组真正选出节点。初始值是内置的 COMPATIBLE（行为等同直连），
+# 太早放行会让后续流量从 runner 本机 IP 出去，WAF 照样拦。
+for attempt in $(seq 1 30); do
+	SELECTED=$(curl -fsS --max-time 5 "${CONTROL_URL}/proxies/CHECKIN" 2>/dev/null \
+		| sed -n 's/.*"now":"\([^"]*\)".*/\1/p' || true)
+	if [[ -n "${SELECTED}" && "${SELECTED}" != "COMPATIBLE" && "${SELECTED}" != "DIRECT" ]]; then
+		echo "[INFO] Proxy group selected node: ${SELECTED}"
 		break
 	fi
-	echo "[INFO] Waiting for proxy health check (${attempt}/45)..."
+	echo "[INFO] Waiting for node selection (${attempt}/30)..."
 	sleep 2
 done
 
+# 不能只测 google.com：runner 直连本来就能上 Google，会误判成成功。
+# 真正的判据是「代理出口 IP 与直连出口 IP 不同」。
+DIRECT_IP=$(curl -fsS -m 15 --noproxy '*' https://api.ipify.org 2>/dev/null || true)
+PROXY_IP=$(curl -fsS -m 20 -x "${PROXY_URL}" https://api.ipify.org 2>/dev/null || true)
+echo "[INFO] Selected node: ${SELECTED:-none}  Direct IP: ${DIRECT_IP:-unknown}  Proxy IP: ${PROXY_IP:-unknown}"
+
+READY=false
+if [[ -n "${PROXY_IP}" && "${PROXY_IP}" != "${DIRECT_IP}" ]]; then
+	READY=true
+fi
+
 if [[ "${READY}" != "true" ]]; then
-	echo "[FAILED] Proxy health check failed for ${PROXY_TEST_URL}"
+	echo "[FAILED] Proxy is not carrying traffic (selected=${SELECTED:-none}, direct=${DIRECT_IP:-unknown}, proxy=${PROXY_IP:-unknown})"
 	tail -n 30 mihomo.log || true
 	if [[ -f mihomo.pid ]]; then
 		kill "$(cat mihomo.pid)" 2>/dev/null || true

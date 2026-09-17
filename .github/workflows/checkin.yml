@@ -111,6 +111,12 @@ jobs:
         curl -s -m 10 http://127.0.0.1:9090/proxies -o /tmp/p.json || echo "(控制接口无响应)"
         python3 -c "import json;d=json.load(open('/tmp/p.json'))['proxies'];g=d.get('CHECKIN',{});print('now=',repr(g.get('now')));print('节点总数=',len(g.get('all') or []));print('节点=',(g.get('all') or [])[:12])" 2>/dev/null || echo "(解析失败)"
         echo
+        echo "=== 逐节点延迟测试 ==="
+        for n in $(curl -s -m 10 http://127.0.0.1:9090/proxies 2>/dev/null | jq -r '.proxies.CHECKIN.all[]' 2>/dev/null); do
+          enc=$(jq -rn --arg v "$n" '$v|@uri' 2>/dev/null)
+          echo "$n -> $(curl -s -m 20 "http://127.0.0.1:9090/proxies/${enc}/delay?timeout=8000&url=https%3A%2F%2Fwww.google.com%2Fgenerate_204")"
+        done
+        echo
         echo "=== mihomo 日志尾部 ==="
         tail -25 "${RUNNER_TEMP}/checkin-proxy/mihomo.log" 2>/dev/null || echo "(无日志)"
 
