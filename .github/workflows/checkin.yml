@@ -94,13 +94,20 @@ jobs:
 
     - name: 配置代理
       env:
-        PROXY_SUBSCRIPTION_URL: ${{ secrets.PROXY_SUBSCRIPTION_URL }}
-        PROXY_TEST_URL: https://www.google.com/generate_204
+        # 一行一个订阅链接，按顺序尝试：前一家连不上就换下一家，
+        # 每家内部再逐个节点试，直到有一个真能出网为止。
+        # 加机场只需要再存一个 secret 并在这里补一行。
+        PROXY_SUBSCRIPTION_URLS: |
+          ${{ secrets.PROXY_SUBSCRIPTION_URL }}
+          ${{ secrets.PROXY_SUBSCRIPTION_URL_2 }}
+          ${{ secrets.PROXY_SUBSCRIPTION_URL_3 }}
         MIHOMO_VERSION: v1.19.27
         # 代理不通就直接失败退出。设成 false 的话脚本只打一行 [FAILED] 就继续跑，
         # 签到会直连出去撞 WAF 的滑动验证页，报错看着像登录问题，实际是代理没生效。
         PROXY_REQUIRED: true
-        # 只使用名称含「盐湖」的节点。留空则用订阅里的全部节点。
+        PROXY_MAX_NODES: "12"
+        PROXY_NODE_TIMEOUT: "6"
+        # 只使用名称含该值的节点。留空则用订阅里的全部节点。
         PROXY_NODE_FILTER: ""
       run: bash scripts/setup_mihomo_proxy.sh
 
