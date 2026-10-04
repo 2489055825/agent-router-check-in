@@ -118,6 +118,11 @@ if [[ "${READY}" != "true" ]]; then
 		kill "$(cat mihomo.pid)" 2>/dev/null || true
 	fi
 	if [[ "${PROXY_REQUIRED}" == "true" ]]; then
+		echo "[ERROR] 代理不通，已中止本次签到（直连去签到只会撞上 WAF 的滑动验证，那个报错更难查）。"
+		echo "[ERROR] 判据：选中节点「${SELECTED:-none}」探测出口 IP 失败（Proxy IP: unknown），即节点连不上。"
+		echo "[ERROR] 常见原因：机场入口挂了——同一入口 IP 按端口分节点，入口一挂全部节点一起失效；也可能是该机场封了机房 IP。"
+		echo "[ERROR] 排查：在本机 Clash 里切到这条订阅连一次。连不上就是机场侧问题，等它恢复即可，不用改订阅地址。"
+		echo "::error title=代理不通，签到未执行::选中节点「${SELECTED:-none}」连不上（Proxy IP: unknown）。先在本机 Clash 切到该订阅验证，多半是机场入口挂了。"
 		exit 1
 	fi
 	exit 0
